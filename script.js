@@ -19,14 +19,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db  = getFirestore(app);
 
-const JOBS_PER_SLIDE = 4;      // 4 cards per slide
-const SLIDE_DURATION = 12000;  // 12 seconds per slide
+const JOBS_PER_SLIDE = 4;
+const SLIDE_DURATION = 12000; // 12s
 let currentSlide = 0;
-let totalSlides = 0;
-let slideInterval;
-let progressInterval;
+let totalSlides  = 0;
+let slideInterval, progressInterval;
 
 function formatDate(dateString) {
   if (!dateString) return "-";
@@ -43,8 +42,8 @@ function getDaysUntilDue(dueDateString) {
 
 function getDateClass(dueDateString) {
   const days = getDaysUntilDue(dueDateString);
-  if (days === null)      return "date-due";
-  if (days < 0 || days<=2) return "date-overdue";
+  if (days === null)       return "date-due";
+  if (days < 0 || days <= 2) return "date-overdue";
   return "date-due";
 }
 
@@ -54,7 +53,7 @@ function getDueDateText(dueDateString) {
   if (days < 0)      return `${Math.abs(days)}d overdue`;
   if (days === 0)    return "Due today";
   if (days === 1)    return "Due tomorrow";
-  if (days <= 7)    return `${days} days`;
+  if (days <= 7)     return `${days} days`;
   return formatDate(dueDateString);
 }
 
@@ -138,8 +137,6 @@ function createListView(jobs) {
 
 function createSlides(jobs) {
   const slides = [];
-
-  // card slides
   for (let i = 0; i < jobs.length; i += JOBS_PER_SLIDE) {
     slides.push(`
       <div class="slide">
@@ -148,14 +145,10 @@ function createSlides(jobs) {
         </div>
       </div>`);
   }
-
-  // split list view into two halves
   const half = Math.ceil(jobs.length / 2);
   slides.push(`<div class="slide">${createListView(jobs.slice(0, half))}</div>`);
-  if (jobs.length > half) {
+  if (jobs.length > half)
     slides.push(`<div class="slide">${createListView(jobs.slice(half))}</div>`);
-  }
-
   return slides;
 }
 
@@ -165,8 +158,8 @@ function updateSlideIndicators() {
 }
 
 function showSlide(idx) {
-  document.querySelectorAll(".slide").forEach((s,i) =>
-    s.classList.toggle("active", i===idx)
+  document.querySelectorAll(".slide").forEach((s,i)=>
+    s.classList.toggle("active", i === idx)
   );
   updateSlideIndicators();
 }
@@ -180,15 +173,13 @@ function startSlideshow() {
   clearInterval(slideInterval);
   clearInterval(progressInterval);
   if (totalSlides <= 1) return;
-
   let prog = 0;
   const bar = document.getElementById("progress-bar");
   progressInterval = setInterval(() => {
-    prog += 100/(SLIDE_DURATION/100);
+    prog += 100 / (SLIDE_DURATION / 100);
     bar.style.width = prog + "%";
     if (prog >= 100) prog = 0;
   }, 100);
-
   slideInterval = setInterval(nextSlide, SLIDE_DURATION);
 }
 
@@ -196,8 +187,7 @@ function renderSlideshow(jobs) {
   const container = document.getElementById("slides-container");
   const totalEl   = document.getElementById("total-jobs");
   const hotEl     = document.getElementById("hot-orders");
-  const upd       = document.getElementById("last-updated");
-
+  const updEl     = document.getElementById("last-updated");
   if (!jobs.length) {
     container.innerHTML = `<div class="loading">No active jobs found</div>`;
     totalEl.textContent = "0";
@@ -205,24 +195,19 @@ function renderSlideshow(jobs) {
     totalSlides         = 0;
     return;
   }
-
-  // sort by due-date ascending
-  jobs.sort((a,b) => {
-    const da = a.dueDate?new Date(a.dueDate):new Date("9999-12-31");
-    const db = b.dueDate?new Date(b.dueDate):new Date("9999-12-31");
+  jobs.sort((a,b)=>{
+    const da = a.dueDate ? new Date(a.dueDate) : new Date("9999-12-31");
+    const db = b.dueDate ? new Date(b.dueDate) : new Date("9999-12-31");
     return da - db;
   });
-
   totalEl.textContent   = jobs.length;
-  hotEl.textContent     = jobs.filter(j=>j.hotOrder).length;
-  upd.textContent       = new Date().toLocaleTimeString();
-
+  hotEl.textContent     = jobs.filter(j => j.hotOrder).length;
+  updEl.textContent     = new Date().toLocaleTimeString();
   const slides = createSlides(jobs);
   totalSlides = slides.length;
   container.innerHTML = slides.join("");
-
   currentSlide = 0;
-  showSlide(currentSlide);
+  showSlide(0);
   startSlideshow();
 }
 
@@ -244,15 +229,13 @@ function loadJobs() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", e => {
-    if (e.key==="ArrowRight"||e.key===" ") nextSlide();
-    else if (e.key==="ArrowLeft") {
-      currentSlide = (currentSlide-1+totalSlides)%totalSlides;
+    if (e.key === "ArrowRight" || e.key === " ") nextSlide();
+    else if (e.key === "ArrowLeft") {
+      currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
       showSlide(currentSlide);
     }
   });
-
   loadJobs();
-
   setInterval(() => {
     document.getElementById("last-updated").textContent =
       new Date().toLocaleTimeString();
