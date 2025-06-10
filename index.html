@@ -1,0 +1,32 @@
+<!-- index.html (unchanged) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Active Jobs Display</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="status-bar">
+    <div class="status-item"><span id="total-jobs">Loading...</span> Active Jobs</div>
+    <div class="status-item"><span id="hot-orders">-</span> Hot Orders</div>
+    <div class="slideshow-controls">
+      <div class="slide-indicator">
+        Slide <span id="current-slide">1</span> of <span id="total-slides">1</span>
+      </div>
+      <div class="auto-advance">Auto-advancing...</div>
+    </div>
+    <div class="status-item">Updated: <span id="last-updated">-</span></div>
+  </div>
+
+  <div class="jobs-container">
+    <div id="slides-container">
+      <div class="loading">Loading jobs...</div>
+    </div>
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
