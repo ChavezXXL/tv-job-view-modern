@@ -42,7 +42,7 @@ function getDaysUntilDue(dueDateString) {
 
 function getDateClass(dueDateString) {
   const days = getDaysUntilDue(dueDateString);
-  if (days === null)       return "date-due";
+  if (days === null)         return "date-due";
   if (days < 0 || days <= 2) return "date-overdue";
   return "date-due";
 }
@@ -159,7 +159,7 @@ function updateSlideIndicators() {
 
 function showSlide(idx) {
   document.querySelectorAll(".slide").forEach((s,i)=>
-    s.classList.toggle("active", i === idx)
+    s.classList.toggle("active", i===idx)
   );
   updateSlideIndicators();
 }
@@ -176,7 +176,7 @@ function startSlideshow() {
   let prog = 0;
   const bar = document.getElementById("progress-bar");
   progressInterval = setInterval(() => {
-    prog += 100 / (SLIDE_DURATION / 100);
+    prog += 100/(SLIDE_DURATION/100);
     bar.style.width = prog + "%";
     if (prog >= 100) prog = 0;
   }, 100);
@@ -196,12 +196,12 @@ function renderSlideshow(jobs) {
     return;
   }
   jobs.sort((a,b)=>{
-    const da = a.dueDate ? new Date(a.dueDate) : new Date("9999-12-31");
-    const db = b.dueDate ? new Date(b.dueDate) : new Date("9999-12-31");
+    const da = a.dueDate?new Date(a.dueDate):new Date("9999-12-31");
+    const db = b.dueDate?new Date(b.dueDate):new Date("9999-12-31");
     return da - db;
   });
   totalEl.textContent   = jobs.length;
-  hotEl.textContent     = jobs.filter(j => j.hotOrder).length;
+  hotEl.textContent     = jobs.filter(j=>j.hotOrder).length;
   updEl.textContent     = new Date().toLocaleTimeString();
   const slides = createSlides(jobs);
   totalSlides = slides.length;
@@ -218,7 +218,7 @@ function handleError(err) {
 }
 
 function loadJobs() {
-  const col = collection(db, "jobs");
+  const col = collection(db,"jobs");
   const q   = query(col, where("active","==",true));
   onSnapshot(q, snap => {
     const arr = [];
@@ -229,9 +229,9 @@ function loadJobs() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight" || e.key === " ") nextSlide();
-    else if (e.key === "ArrowLeft") {
-      currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+    if (e.key==="ArrowRight"||e.key===" ") nextSlide();
+    else if (e.key==="ArrowLeft") {
+      currentSlide=(currentSlide-1+totalSlides)%totalSlides;
       showSlide(currentSlide);
     }
   });
