@@ -1,11 +1,292 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Active Jobs Display</title>
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* styles.css */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      position: relative;
+    }
+
+    .status-bar {
+      background: rgba(255,255,255,0.1);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1rem;
+      box-shadow: 0 2px 10px rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      position: relative;
+      z-index: 10;
+    }
+
+    .slideshow-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .slide-indicator {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.9rem;
+    }
+
+    .auto-advance {
+      color: #2ed573;
+      font-size: 0.8rem;
+    }
+
+    .jobs-container {
+      height: calc(100vh - 60px - 4px); /* Account for progress bar */
+      padding: 15px;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .slide {
+      display: none;
+      height: 100%;
+      animation: slideIn 0.5s ease-in-out;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Shrink the minimum width so 4 fit on most TVs */
+    .jobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .job-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 6px 25px rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .job-card.hot-order {
+      border: 2px solid #ff4757;
+      background: rgba(255,71,87,0.15);
+      animation: hotPulse 2s infinite;
+    }
+
+    @keyframes hotPulse {
+      0%,100% { box-shadow:0 6px 25px rgba(255,255,255,0.1); border-color:#ff4757; }
+      50%     { box-shadow:0 6px 30px rgba(255,71,87,0.8); border-color:#ff3742; }
+    }
+
+    .job-card.hot-order::before {
+      content: "🔥 HOT";
+      position: absolute;
+      top: 8px; right: 8px;
+      background: #ff4757;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 15px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(255,71,87,0.5);
+    }
+
+    .job-header { margin-bottom: 12px; }
+
+    .po-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #00d2ff;
+      text-shadow: 0 0 10px rgba(0,210,255,0.5);
+    }
+
+    .job-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .detail-item {
+      background: rgba(255,255,255,0.05);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 3px solid #00d2ff;
+    }
+
+    .detail-label {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      color: #ccc;
+    }
+
+    .detail-value {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .dates-section {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .date-item { flex: 1; text-align: center; }
+
+    .date-label {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      color: #ccc;
+    }
+
+    .date-value {
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .date-received { color: #2ed573; }
+    .date-due      { color: #ffa502; }
+    .date-overdue  { color: #ff4757; animation: blink 1s infinite; }
+
+    @keyframes blink {
+      0%,50%   { opacity: 1; }
+      51%,100% { opacity: 0.6; }
+    }
+
+    /* List View */
+    .list-view {
+      padding: 20px;
+      overflow-y: auto;
+      height: 100%;
+    }
+
+    .list-view h2 {
+      color: #00d2ff;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2rem;
+    }
+
+    .job-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .job-row {
+      background: rgba(255,255,255,0.05);
+      padding: 12px 16px;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 15px;
+      align-items: center;
+      border-left: 3px solid #00d2ff;
+    }
+
+    .job-row.hot-order {
+      border-left-color: #ff4757;
+      background: rgba(255,71,87,0.1);
+    }
+
+    .job-row-item { text-align: center; }
+
+    .job-row-label {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      color: #ccc;
+    }
+
+    .job-row-value {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .loading, .error {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+
+    .loading { font-size: 1.2rem; color: #00d2ff; }
+    .error   { font-size: 1.2rem; color: #ff4757; }
+
+    /* Fixed Progress bar positioning */
+    .progress-bar {
+      position: fixed;
+      bottom: 0; 
+      left: 0;
+      width: 0%;
+      height: 4px;
+      background: linear-gradient(90deg, #00d2ff 0%, #0099cc 100%);
+      transition: width 0.1s linear;
+      z-index: 5;
+      box-shadow: 0 -1px 4px rgba(0,210,255,0.5);
+    }
+
+    /* Add a subtle background for the progress bar */
+    .progress-bar-background {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      z-index: 4;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 1200px) {
+      .jobs-grid { grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); }
+      .po-number { font-size: 2rem; }
+    }
+
+    @media (max-width: 800px) {
+      .jobs-grid { grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); }
+      .job-details { grid-template-columns: 1fr; }
+      .job-row { grid-template-columns: repeat(3,1fr); }
+    }
+
+    /* Better TV display optimizations */
+    @media (min-width: 1920px) {
+      .jobs-grid { grid-template-columns: repeat(4, 1fr); }
+      .po-number { font-size: 3rem; }
+      .detail-value { font-size: 1.2rem; }
+    }
+  </style>
 </head>
 <body>
   <div class="status-bar">
@@ -19,15 +300,282 @@
     </div>
     <div class="status-item">Updated: <span id="last-updated">-</span></div>
   </div>
-
   <div class="jobs-container">
     <div id="slides-container">
       <div class="loading">Loading jobs...</div>
     </div>
-    <div class="progress-bar" id="progress-bar"></div>
   </div>
+  <div class="progress-bar-background"></div>
+  <div class="progress-bar" id="progress-bar"></div>
 
-  <script type="module" src="script.js"></script>
+  <script type="module">
+    // script.js
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdxcEzQNH53JLsjI2uo-oApXFLZ5NzxGE",
+      authDomain: "sc-deburring-job-view-2d546.firebaseapp.com",
+      databaseURL: "https://sc-deburring-job-view-2d546-default-rtdb.firebaseio.com",
+      projectId: "sc-deburring-job-view-2d546",
+      storageBucket: "sc-deburring-job-view-2d546.firebasestorage.app",
+      messagingSenderId: "364676812827",
+      appId: "1:364676812827:web:6b0c694a050e6bac0228be"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const JOBS_PER_SLIDE = 4;
+    const SLIDE_DURATION = 12000; // 12s
+    let currentSlide = 0;
+    let totalSlides  = 0;
+    let slideInterval, progressInterval;
+
+    function formatDate(dateString) {
+      if (!dateString) return "-";
+      return new Date(dateString)
+        .toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function getDaysUntilDue(dueDateString) {
+      if (!dueDateString) return null;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const due   = new Date(dueDateString); due.setHours(0,0,0,0);
+      return Math.ceil((due - today) / (1000*60*60*24));
+    }
+
+    function getDateClass(dueDateString) {
+      const days = getDaysUntilDue(dueDateString);
+      if (days === null)         return "date-due";
+      if (days < 0 || days <= 2) return "date-overdue";
+      return "date-due";
+    }
+
+    function getDueDateText(dueDateString) {
+      const days = getDaysUntilDue(dueDateString);
+      if (days === null) return formatDate(dueDateString);
+      if (days < 0)      return `${Math.abs(days)}d overdue`;
+      if (days === 0)    return "Due today";
+      if (days === 1)    return "Due tomorrow";
+      if (days <= 7)     return `${days} days`;
+      return formatDate(dueDateString);
+    }
+
+    function createJobCard(job) {
+      const cls       = job.hotOrder ? "hot-order" : "";
+      const dateClass = getDateClass(job.dueDate);
+      const dueText   = getDueDateText(job.dueDate);
+
+      return `
+        <div class="job-card ${cls}">
+          <div class="job-header">
+            <div class="po-number">${job.poNumber||"No PO"}</div>
+          </div>
+          <div class="job-details">
+            <div class="detail-item">
+              <div class="detail-label">Job #</div>
+              <div class="detail-value">${job.jobNumber||job.id}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Part</div>
+              <div class="detail-value">${job.partNumber||"-"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Qty</div>
+              <div class="detail-value">${job.quantity||"-"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Priority</div>
+              <div class="detail-value">${job.hotOrder?"🔥 HIGH":"Normal"}</div>
+            </div>
+          </div>
+          <div class="dates-section">
+            <div class="date-item">
+              <div class="date-label">Received</div>
+              <div class="date-value date-received">${formatDate(job.receivedDate)}</div>
+            </div>
+            <div class="date-item">
+              <div class="date-label">Due</div>
+              <div class="date-value ${dateClass}">${dueText}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function createListView(jobs) {
+      return `
+        <div class="list-view">
+          <h2>All Active Jobs</h2>
+          <div class="job-list">
+            ${jobs.map(job => {
+              const cls       = job.hotOrder ? "hot-order" : "";
+              const dateClass = getDateClass(job.dueDate);
+              const dueText   = getDueDateText(job.dueDate);
+              return `
+                <div class="job-row ${cls}">
+                  <div class="job-row-item">
+                    <div class="job-row-label">PO Number</div>
+                    <div class="job-row-value">${job.poNumber||"No PO"}</div>
+                  </div>
+                  <div class="job-row-item">
+                    <div class="job-row-label">Job #</div>
+                    <div class="job-row-value">${job.jobNumber||job.id}</div>
+                  </div>
+                  <div class="job-row-item">
+                    <div class="job-row-label">Part</div>
+                    <div class="job-row-value">${job.partNumber||"-"}</div>
+                  </div>
+                  <div class="job-row-item">
+                    <div class="job-row-label">Qty</div>
+                    <div class="job-row-value">${job.quantity||"-"}</div>
+                  </div>
+                  <div class="job-row-item">
+                    <div class="job-row-label">Due Date</div>
+                    <div class="job-row-value ${dateClass}">${dueText}</div>
+                  </div>
+                </div>`;
+            }).join("")}
+          </div>
+        </div>`;
+    }
+
+    function createSlides(jobs) {
+      const slides = [];
+      for (let i = 0; i < jobs.length; i += JOBS_PER_SLIDE) {
+        slides.push(`
+          <div class="slide">
+            <div class="jobs-grid">
+              ${jobs.slice(i, i + JOBS_PER_SLIDE).map(createJobCard).join("")}
+            </div>
+          </div>`);
+      }
+      const half = Math.ceil(jobs.length / 2);
+      slides.push(`<div class="slide">${createListView(jobs.slice(0, half))}</div>`);
+      if (jobs.length > half)
+        slides.push(`<div class="slide">${createListView(jobs.slice(half))}</div>`);
+      return slides;
+    }
+
+    function updateSlideIndicators() {
+      document.getElementById("current-slide").textContent = currentSlide + 1;
+      document.getElementById("total-slides").textContent  = totalSlides;
+    }
+
+    function showSlide(idx) {
+      document.querySelectorAll(".slide").forEach((s,i)=>
+        s.classList.toggle("active", i===idx)
+      );
+      updateSlideIndicators();
+    }
+
+    function nextSlide() {
+      currentSlide = (currentSlide + 1) % totalSlides;
+      showSlide(currentSlide);
+    }
+
+    function startSlideshow() {
+      clearInterval(slideInterval);
+      clearInterval(progressInterval);
+      if (totalSlides <= 1) {
+        // Hide progress bar if only one slide
+        document.getElementById("progress-bar").style.display = "none";
+        document.querySelector(".progress-bar-background").style.display = "none";
+        return;
+      }
+      
+      // Show progress bar
+      document.getElementById("progress-bar").style.display = "block";
+      document.querySelector(".progress-bar-background").style.display = "block";
+      
+      let prog = 0;
+      const bar = document.getElementById("progress-bar");
+      
+      // Reset progress bar
+      bar.style.width = "0%";
+      
+      progressInterval = setInterval(() => {
+        prog += 100/(SLIDE_DURATION/100);
+        bar.style.width = Math.min(prog, 100) + "%";
+        if (prog >= 100) {
+          prog = 0;
+        }
+      }, 100);
+      
+      slideInterval = setInterval(nextSlide, SLIDE_DURATION);
+    }
+
+    function renderSlideshow(jobs) {
+      const container = document.getElementById("slides-container");
+      const totalEl   = document.getElementById("total-jobs");
+      const hotEl     = document.getElementById("hot-orders");
+      const updEl     = document.getElementById("last-updated");
+      
+      if (!jobs.length) {
+        container.innerHTML = `<div class="loading">No active jobs found</div>`;
+        totalEl.textContent = "0";
+        hotEl.textContent   = "0";
+        totalSlides         = 0;
+        // Hide progress bar when no jobs
+        document.getElementById("progress-bar").style.display = "none";
+        document.querySelector(".progress-bar-background").style.display = "none";
+        return;
+      }
+      
+      jobs.sort((a,b)=>{
+        const da = a.dueDate?new Date(a.dueDate):new Date("9999-12-31");
+        const db = b.dueDate?new Date(b.dueDate):new Date("9999-12-31");
+        return da - db;
+      });
+      
+      totalEl.textContent   = jobs.length;
+      hotEl.textContent     = jobs.filter(j=>j.hotOrder).length;
+      updEl.textContent     = new Date().toLocaleTimeString();
+      
+      const slides = createSlides(jobs);
+      totalSlides = slides.length;
+      container.innerHTML = slides.join("");
+      currentSlide = 0;
+      showSlide(0);
+      startSlideshow();
+    }
+
+    function handleError(err) {
+      console.error(err);
+      document.getElementById("slides-container").innerHTML =
+        `<div class="error">Error loading jobs. Check connection.</div>`;
+    }
+
+    function loadJobs() {
+      const col = collection(db,"jobs");
+      const q   = query(col, where("active","==",true));
+      onSnapshot(q, snap => {
+        const arr = [];
+        snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
+        renderSlideshow(arr);
+      }, handleError);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.addEventListener("keydown", e => {
+        if (e.key==="ArrowRight"||e.key===" ") nextSlide();
+        else if (e.key==="ArrowLeft") {
+          currentSlide=(currentSlide-1+totalSlides)%totalSlides;
+          showSlide(currentSlide);
+        }
+      });
+      loadJobs();
+      setInterval(() => {
+        document.getElementById("last-updated").textContent =
+          new Date().toLocaleTimeString();
+      }, 30000);
+    });
+  </script>
 </body>
 </html>
-
