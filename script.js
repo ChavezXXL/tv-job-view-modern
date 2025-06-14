@@ -27,6 +27,145 @@ let currentSlide = 0;
 let totalSlides  = 0;
 let slideInterval, progressInterval;
 
+// Break alarm system
+const BREAK_TIMES = [
+  { start: "08:00", end: "08:11", name: "Morning Break" },
+  { start: "10:30", end: "11:01", name: "Mid-Morning Break" },
+  { start: "14:30", end: "14:41", name: "Afternoon Break" },  // 2:30 PM
+  { start: "16:30", end: "16:41", name: "Late Afternoon Break" }  // 4:30 PM
+];
+
+let breakAlarmActive = false;
+let breakAlarmInterval;
+let alarmAudioContext;
+let currentAlarmOscillator;
+
+// Initialize audio context for alarm sounds
+function initAudioContext() {
+  if (!alarmAudioContext) {
+    alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+// Create factory alarm sound
+function playAlarmSound() {
+  initAudioContext();
+  
+  // Create oscillator for alarm tone
+  const oscillator = alarmAudioContext.createOscillator();
+  const gainNode = alarmAudioContext.createGain();
+  
+  // Connect oscillator to gain to output
+  oscillator.connect(gainNode);
+  gainNode.connect(alarmAudioContext.destination);
+  
+  // Set alarm frequency (typical factory alarm frequency)
+  oscillator.frequency.setValueAtTime(800, alarmAudioContext.currentTime);
+  oscillator.frequency.setValueAtTime(1000, alarmAudioContext.currentTime + 0.5);
+  oscillator.frequency.setValueAtTime(800, alarmAudioContext.currentTime + 1);
+  
+  // Set volume
+  gainNode.gain.setValueAtTime(0.3, alarmAudioContext.currentTime);
+  gainNode.gain.setValueAtTime(0, alarmAudioContext.currentTime + 1);
+  
+  // Set waveform (square wave for harsh alarm sound)
+  oscillator.type = 'square';
+  
+  // Start and stop the oscillator
+  oscillator.start(alarmAudioContext.currentTime);
+  oscillator.stop(alarmAudioContext.currentTime + 1);
+  
+  currentAlarmOscillator = oscillator;
+}
+
+// Play continuous alarm sound
+function startAlarmSound() {
+  const playAlarm = () => {
+    if (breakAlarmActive) {
+      playAlarmSound();
+      setTimeout(playAlarm, 1200); // Play every 1.2 seconds
+    }
+  };
+  playAlarm();
+}
+
+// Stop alarm sound
+function stopAlarmSound() {
+  if (currentAlarmOscillator) {
+    try {
+      currentAlarmOscillator.stop();
+    } catch (e) {
+      // Oscillator might already be stopped
+    }
+  }
+}
+
+// Check if current time is within break time
+function isBreakTime() {
+  const now = new Date();
+  const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                     now.getMinutes().toString().padStart(2, '0');
+  
+  for (const breakTime of BREAK_TIMES) {
+    if (currentTime >= breakTime.start && currentTime <= breakTime.end) {
+      return breakTime;
+    }
+  }
+  return null;
+}
+
+// Show break alarm
+function showBreakAlarm(breakInfo) {
+  if (breakAlarmActive) return; // Don't show if already active
+  
+  breakAlarmActive = true;
+  const modal = document.getElementById('break-alarm-modal');
+  const title = document.getElementById('break-alarm-title');
+  const message = document.getElementById('break-alarm-message');
+  const timer = document.getElementById('break-alarm-timer');
+  
+  title.textContent = breakInfo.name.toUpperCase();
+  message.textContent = `Break time until ${breakInfo.end}`;
+  
+  modal.classList.add('show');
+  
+  // Start alarm sound
+  startAlarmSound();
+  
+  // Countdown timer
+  let countdown = 5;
+  timer.textContent = countdown;
+  
+  const countdownInterval = setInterval(() => {
+    countdown--;
+    timer.textContent = countdown;
+    
+    if (countdown <= 0) {
+      clearInterval(countdownInterval);
+      hideBreakAlarm();
+    }
+  }, 1000);
+}
+
+// Hide break alarm
+function hideBreakAlarm() {
+  breakAlarmActive = false;
+  const modal = document.getElementById('break-alarm-modal');
+  modal.classList.remove('show');
+  
+  // Stop alarm sound
+  stopAlarmSound();
+}
+
+// Check for break times every minute
+function checkBreakTimes() {
+  const breakInfo = isBreakTime();
+  if (breakInfo && !breakAlarmActive) {
+    showBreakAlarm(breakInfo);
+  }
+}
+
+// Job display functions
 function formatDate(dateString) {
   if (!dateString) return "-";
   return new Date(dateString)
@@ -172,14 +311,31 @@ function nextSlide() {
 function startSlideshow() {
   clearInterval(slideInterval);
   clearInterval(progressInterval);
-  if (totalSlides <= 1) return;
+  if (totalSlides <= 1) {
+    // Hide progress bar if only one slide
+    document.getElementById("progress-bar").style.display = "none";
+    document.querySelector(".progress-bar-background").style.display = "none";
+    return;
+  }
+  
+  // Show progress bar
+  document.getElementById("progress-bar").style.display = "block";
+  document.querySelector(".progress-bar-background").style.display = "block";
+  
   let prog = 0;
   const bar = document.getElementById("progress-bar");
+  
+  // Reset progress bar
+  bar.style.width = "0%";
+  
   progressInterval = setInterval(() => {
     prog += 100/(SLIDE_DURATION/100);
-    bar.style.width = prog + "%";
-    if (prog >= 100) prog = 0;
+    bar.style.width = Math.min(prog, 100) + "%";
+    if (prog >= 100) {
+      prog = 0;
+    }
   }, 100);
+  
   slideInterval = setInterval(nextSlide, SLIDE_DURATION);
 }
 
@@ -188,21 +344,28 @@ function renderSlideshow(jobs) {
   const totalEl   = document.getElementById("total-jobs");
   const hotEl     = document.getElementById("hot-orders");
   const updEl     = document.getElementById("last-updated");
+  
   if (!jobs.length) {
     container.innerHTML = `<div class="loading">No active jobs found</div>`;
     totalEl.textContent = "0";
     hotEl.textContent   = "0";
     totalSlides         = 0;
+    // Hide progress bar when no jobs
+    document.getElementById("progress-bar").style.display = "none";
+    document.querySelector(".progress-bar-background").style.display = "none";
     return;
   }
+  
   jobs.sort((a,b)=>{
     const da = a.dueDate?new Date(a.dueDate):new Date("9999-12-31");
     const db = b.dueDate?new Date(b.dueDate):new Date("9999-12-31");
     return da - db;
   });
+  
   totalEl.textContent   = jobs.length;
   hotEl.textContent     = jobs.filter(j=>j.hotOrder).length;
   updEl.textContent     = new Date().toLocaleTimeString();
+  
   const slides = createSlides(jobs);
   totalSlides = slides.length;
   container.innerHTML = slides.join("");
@@ -227,17 +390,40 @@ function loadJobs() {
   }, handleError);
 }
 
+// Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
+  // Keyboard navigation
   document.addEventListener("keydown", e => {
     if (e.key==="ArrowRight"||e.key===" ") nextSlide();
     else if (e.key==="ArrowLeft") {
       currentSlide=(currentSlide-1+totalSlides)%totalSlides;
       showSlide(currentSlide);
     }
+    // ESC key to dismiss alarm manually (hidden feature)
+    else if (e.key === "Escape" && breakAlarmActive) {
+      hideBreakAlarm();
+    }
   });
+  
+  // Initialize audio context on first user interaction
+  document.addEventListener('click', initAudioContext, { once: true });
+  document.addEventListener('keydown', initAudioContext, { once: true });
+  
+  // Load jobs from Firebase
   loadJobs();
+  
+  // Update timestamp every 30 seconds
   setInterval(() => {
     document.getElementById("last-updated").textContent =
       new Date().toLocaleTimeString();
   }, 30000);
+  
+  // Check for break times every minute
+  setInterval(checkBreakTimes, 60000);
+  
+  // Also check break times immediately
+  checkBreakTimes();
+  
+  console.log("Job display system initialized");
+  console.log("Break times configured:", BREAK_TIMES);
 });
